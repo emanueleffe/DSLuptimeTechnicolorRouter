@@ -5,6 +5,8 @@ Useful to see how stable is your DSL connection.
 Acquired data:  
 ```Date, Duration (minutes)```
 
+It requires you to configure your username, password and ssid (optional) inside the Python script.
+
 Execute the script every 30 minutes (Linux), insert this string into your crontab file (```crontab -e```):  
 ```*/30 * * * * python /path/to/script/getUptime.py```  
 [learn more about crontab](https://linuxconfig.org/linux-cron-guide)
