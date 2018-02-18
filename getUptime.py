@@ -91,7 +91,7 @@ def insertDataToDBandCreateChart(collectedData):
                         #calculate n. of minutes of the period
                         periodMinutes = period.seconds / 60 + period.days * 24 * 60
                         #sometimes periods are not exact, this if is to avoid invalid periods
-                        if (periodMinutes > 0):
+                        if (periodMinutes > 1):
                             periodList.append(periodMinutes)
                             #append to datetimeList the two dates of the period
                             datetimeList.append("from %s to %s"%(diffReconn,currentRow))
