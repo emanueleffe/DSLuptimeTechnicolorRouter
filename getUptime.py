@@ -88,10 +88,13 @@ def insertDataToDBandCreateChart(collectedData):
                         #if the previous row is equal to a dummy value, then period = 0
                         else:
                             period = timedelta(seconds=0)
-                        #append to periodList n. of minutes of the period
-                        periodList.append(period.seconds / 60 + period.days * 24 * 60)
-                        #append to datetimeList the two dates of the period
-                        datetimeList.append("from %s to %s"%(diffReconn,currentRow))
+                        #calculate n. of minutes of the period
+                        periodMinutes = period.seconds / 60 + period.days * 24 * 60
+                        #sometimes periods are not exact, this if is to avoid invalid periods
+                        if (periodMinutes > 0):
+                            periodList.append(periodMinutes)
+                            #append to datetimeList the two dates of the period
+                            datetimeList.append("from %s to %s"%(diffReconn,currentRow))
                         #update the previous row with the current one
                         diffReconn = currentRow
             #delete from list the first element because it's 0 (it's calculated with the dummy date)
