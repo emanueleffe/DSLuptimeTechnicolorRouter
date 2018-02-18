@@ -107,8 +107,17 @@ def insertDataToDBandCreateChart(collectedData):
             layout = plotly.graph_objs.Layout(showlegend=True)
             #create figure
             fig = plotly.graph_objs.Figure(data=data, layout=layout)
-            #plot
-            plotly.offline.plot(fig, filename="Chart.html", auto_open=False)
+            #offline plot
+            plotly.offline.plot(fig, filename="DSL uptime chart.html", auto_open=False)
+            '''
+	    online plot: in order to use it you must signup on plot.ly website, and configure it
+            by using the following commands in python cli:
+            import plotly
+            plotly.tools.set_credentials_file(username='DemoAccount', api_key='lr1c37zw81')
+	    more info here: https://plot.ly/python/getting-started/#initialization-for-online-plotting
+	    '''
+            #plotly.plotly.plot(fig, filename="DSL uptime chart", auto_open=False)
+            
 			
     except lite.Error, e:
         print "Error: %s" %e.args[0]
