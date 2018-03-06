@@ -7,9 +7,9 @@ Acquired data:
 
 It requires you to configure your username, password and ssid (optional) inside the Python script.
 
-Execute the script every 30 minutes (Linux), insert this string into your crontab file (```crontab -e```):  
+Example of scheduled job with ```cron```  to execute this script every 30 minutes (GNU/Linux):  
 ```*/30 * * * * python /path/to/script/getUptime.py```  
-[learn more about crontab](https://linuxconfig.org/linux-cron-guide)
+[learn more about cron](https://linuxconfig.org/linux-cron-guide)
 
 This script uses [Plotly](https://plot.ly/) to generate a nice chart.
 
