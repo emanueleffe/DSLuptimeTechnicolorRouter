@@ -5,9 +5,10 @@ import errno
 from subprocess import check_output
 import urllib2
 import re
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 import sqlite3 as lite
 import plotly
+import platform
 
 #global variables
 ip = '192.168.1.254'
@@ -27,11 +28,14 @@ def checkInternetConnection():
 
 #function to extract the SSID that my PC is connected to
 def extractSSID():
-    scanoutput = check_output("iwgetid")
     obtainedSSID = "WiFi not found"
-    line = scanoutput.split('ESSID:"')
-    #delete 2 characters because there's a " and a \n at the end of line
-    obtainedSSID = line[1][:-2]
+    if platform.system() == "Linux":
+        scanoutput = check_output("iwgetid")
+        line = scanoutput.split('ESSID:"')
+        #delete 2 characters because there's a " and a \n at the end of line
+        obtainedSSID = line[1][:-2]
+    else:
+        obtainedSSID = "Not Linux"
     return obtainedSSID
 
 #function to convert the string "X giorno/i HH:MM:SS" to minutes
@@ -71,7 +75,7 @@ def insertDataToDBandCreateChart(collectedData):
             cur.execute("CREATE TABLE IF NOT EXISTS DSLuptime (eventID integer NOT NULL PRIMARY KEY,eventDate DATETIME NOT NULL,eventDuration INTEGER NOT NULL, reconnectionDatetime DATETIME NOT NULL);")
             # insert data
             cur.executemany("INSERT INTO DSLuptime (eventDate, eventDuration, reconnectionDatetime) VALUES (?,?,?);",(collectedData))
-            #function to view the already entered data and store as a txt file.
+            
             cur.execute("SELECT reconnectionDatetime FROM DSLuptime")
             row = ""
             diffReconn = datetime.strptime("1970-01-01 00:00:00","%Y-%m-%d %H:%M:%S")
@@ -90,7 +94,7 @@ def insertDataToDBandCreateChart(collectedData):
                             period = timedelta(seconds=0)
                         #calculate n. of minutes of the period
                         periodMinutes = period.seconds / 60 + period.days * 24 * 60
-                        #sometimes periods are not exact, this if is to avoid invalid periods
+                        #sometimes periods are not exact, this is to avoid invalid periods
                         if (periodMinutes > 1):
                             periodList.append(periodMinutes)
                             #append to datetimeList the two dates of the period
@@ -108,16 +112,15 @@ def insertDataToDBandCreateChart(collectedData):
             #create figure
             fig = plotly.graph_objs.Figure(data=data, layout=layout)
             #offline plot
-            plotly.offline.plot(fig, filename="DSL uptime chart.html", auto_open=False)
+            #plotly.offline.plot(fig, filename="DSL uptime chart.html", auto_open=False)
             '''
-	    online plot: in order to use it you must signup on plot.ly website, and configure it
+	        online plot: in order to use it you must signup on plot.ly website, and configure it
             by using the following commands in python cli:
             import plotly
             plotly.tools.set_credentials_file(username='DemoAccount', api_key='lr1c37zw81')
-	    more info here: https://plot.ly/python/getting-started/#initialization-for-online-plotting
-	    '''
-            #plotly.plotly.plot(fig, filename="DSL uptime chart", auto_open=False)
-            
+	        more info here: https://plot.ly/python/getting-started/#initialization-for-online-plotting
+            '''
+            plotly.plotly.plot(fig, filename="DSL uptime chart", auto_open=False)
 			
     except lite.Error, e:
         print "Error: %s" %e.args[0]
@@ -129,7 +132,7 @@ def insertDataToDBandCreateChart(collectedData):
 def main():
     collectedData = []
     #just comment out the second if, if there's no need to check ssid (e.g. wired connection)
-    if((checkInternetConnection()) & (extractSSID() == mySSID)):
+    if(checkInternetConnection() & ((extractSSID() == mySSID) or extractSSID() == "Not Linux")):
         try:
             #declaration, initialization and beginning of telnet communication
             tn = telnetlib.Telnet(ip,port)
