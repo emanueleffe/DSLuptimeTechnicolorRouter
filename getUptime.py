@@ -34,8 +34,13 @@ def extractSSID():
         line = scanoutput.split('ESSID:"')
         #delete 2 characters because there's a " and a \n at the end of line
         obtainedSSID = line[1][:-2]
+    elif platform.system() == "Windows":
+        scanoutput = check_output("netsh wlan show interfaces")
+        for line in scanoutput.splitlines():
+            if line[4:8] == "SSID":
+                obtainedSSID = line[29:]
     else:
-        obtainedSSID = "Not Linux"
+        obtainedSSID = "Not Linux or Windows"
     return obtainedSSID
 
 #function to convert the string "X giorno/i HH:MM:SS" to minutes
@@ -132,7 +137,7 @@ def insertDataToDBandCreateChart(collectedData):
 def main():
     collectedData = []
     #just comment out the second if, if there's no need to check ssid (e.g. wired connection)
-    if(checkInternetConnection() & ((extractSSID() == mySSID) or extractSSID() == "Not Linux")):
+    if(checkInternetConnection() & ((extractSSID() == mySSID) or extractSSID() == "Not Linux or Windows")):
         try:
             #declaration, initialization and beginning of telnet communication
             tn = telnetlib.Telnet(ip,port)
