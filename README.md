@@ -12,6 +12,7 @@ Requirements:
 It requires also a small configuration in the settings.conf file.
 
 Example of scheduled job with ```cron```  to execute this script every 30 minutes (GNU/Linux)
+
 ```*/30 * * * * cd /path/to/script && python2 getUptime.py >> output.log```  
 [learn more about cron](https://linuxconfig.org/linux-cron-guide)
 
