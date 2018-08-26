@@ -2,7 +2,7 @@
 import telnetlib
 import socket
 import errno
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 import urllib2
 import re
 from datetime import datetime,timedelta
@@ -13,7 +13,6 @@ import ConfigParser
 import os
 import platform
 import logging
-
 
 def readConfig():
     if os.path.isfile(settingsFilename):
@@ -35,10 +34,9 @@ def createExampleFile():
     filecontent = "[network]\nip = 192.168.1.254\nport = 23\nwirelessconnection = 1\n"
     filecontent = filecontent + "myssid = ssid\n[login]\nusername = Administrator\n"
     filecontent = filecontent + "password = password\n[plotly]\nonlinePlot = 0\n"
-    filecontent = filecontent + "[paths]\nLinuxPath = ~\nLinuxOutputpath = ~\n"
-    filecontent = filecontent + "WindowsPath = C:\n"
-    filecontent = filecontent + "WindowsOutputPath = C:\n"
-    filecontent = filecontent + "DBfilename = DSLuptime.db"
+    filecontent = filecontent + "plotlyusername = username\nplotlyapikey = exampleapikey\n"
+    filecontent = filecontent + "[dbname]\nDBfilename = DSLuptime.db"
+
     exampleFile.write(filecontent)
 
 def validateConf(configDict):
@@ -48,7 +46,7 @@ def validateConf(configDict):
         #check if there's an empty parameter
         for key in configDict:
             if configDict[key] == '':
-                exc = "Empty " + key + " parameter"
+                exc = "Evaluation error: Empty " + key + " parameter"
                 raise Exception
 
         #ip address evaluation
@@ -58,43 +56,24 @@ def validateConf(configDict):
         if(not configDict['port'].isdigit() or
            (int(configDict['port']) <= 0 or 
             int(configDict['port']) > 65536)):
-            exc = "Invalid port number"
+            exc = "Evaluation error: Invalid port number"
             raise Exception
         
         #wirelessconnection evaluation
-        if(configDict['wirelessconnection'] != '0' and
-           configDict['wirelessconnection'] != '1'):
-           exc = "Invalid wirelessconnection option, please set it to 0 or 1"
+        if(configDict['iswirelessconnection'] != '0' and
+           configDict['iswirelessconnection'] != '1'):
+           exc = "Evaluation error: Invalid iswirelessconnection option, please set it to 0 or 1"
            raise Exception
 
         #plot option evaluation
         if(configDict['onlineplot'] != '0' and 
            configDict['onlineplot'] != '1'):
-           exc = "Invalid onlineplot option, please set it to 0 or 1"
+           exc = "Evaluation error: Invalid onlineplot option, please set it to 0 or 1"
            raise Exception
-
-        #path evaluation
-        if platform.system() == "Linux":
-            if (not os.path.isdir(configDict['linuxpath']) or
-                not os.path.isdir(configDict['linuxoutputpath'])):
-                exc = "Invalid path, the specified path or outputpath does not exist"
-                raise Exception
-        elif platform.system() == "Windows":
-            # raw_input and replace \ with /
-            windowsPath = raw_input(configDict['windowspath'])
-            windowsPath = windowsPath.replace("\\", "/")
-            
-            if (not os.path.isdir(windowsPath) or
-                not os.path.isdir(windowsPath)):
-                exc = "Invalid path, the specified path or outputpath does not exist"
-                raise Exception
-        else:
-            exc = "Not supported OS"
-            raise Exception
         
     #invalid ip address
     except socket.error:
-        writeErrorLog("Invalid IP address")
+        writeErrorLog("Evaluation error: Invalid IP address")
         configDict = None
     #Generic exception
     except Exception:
@@ -112,16 +91,20 @@ def checkInternetConnection():
         urllib2.urlopen('http://www.google.com', timeout=1)
         return True
     except urllib2.URLError as err:
+        writeErrorLog("urllib2.URLError")
         return False
 
 #function to extract the SSID that my PC is connected to
 def extractSSID():
     obtainedSSID = "WiFi not found"
     if platform.system() == "Linux":
-        scanoutput = check_output("iwgetid")
-        line = scanoutput.split('ESSID:"')
-        #delete 2 characters because there's a " and a \n at the end of line
-        obtainedSSID = line[1][:-2]
+        try:
+            scanoutput = check_output("iwgetid")
+            line = scanoutput.split('ESSID:"')
+            #delete 2 characters because there's a " and a \n at the end of line
+            obtainedSSID = line[1][:-2]
+        except CalledProcessError as e:
+            writeErrorLog("Exception caught: CalledProcessError")
     elif platform.system() == "Windows":
         scanoutput = check_output("netsh wlan show interfaces")
         for line in scanoutput.splitlines():
@@ -155,13 +138,13 @@ def calcReconnection(eventDate,uptime):
     calculatedDatetime = datetimet - timedelta(minutes=uptime)
     return calculatedDatetime
 
-#function to insert data to database 'DSLuptime.db'
+#function to insert data to database DBFilename
 def insertDataToDBandCreateChart(collectedData):
     con = None
     periodList = []
     datetimeList = []
     try:
-        con = lite.connect('DSLuptime.db')
+        con = lite.connect(DBFilename)
         with con:
             cur = con.cursor()
             # create table if not exists
@@ -207,19 +190,20 @@ def insertDataToDBandCreateChart(collectedData):
 
             if(onlinePlot == True):
                 '''
-                online plot: in order to use it you must signup on plot.ly website, and configure it
+                online plot: in order to use it you must signup on plot.ly website and configure it
                 by using the following commands in python cli:
-                import plotly
-                plotly.tools.set_credentials_file(username='DemoAccount', api_key='lr1c37zw81')
+                >>> import plotly
+                >>> plotly.tools.set_credentials_file(username='DemoAccount', api_key='lr1c37zw81')
                 more info here: https://plot.ly/python/getting-started/#initialization-for-online-plotting
                 '''
+                plotly.tools.set_credentials_file(username=plotlyUsername, api_key=plotlyAPIkey)
                 plotly.plotly.plot(fig, filename="DSL uptime chart", auto_open=False)
             else:
                 #offline plot
                 plotly.offline.plot(fig, filename="DSL uptime chart.html", auto_open=False)
 
     except lite.Error, e:
-        print "Error: %s" %e.args[0]
+        writeErrorLog("sqlite3.Error: %s" %e.args[0])
     finally:
         if con:
             con.close()
@@ -243,7 +227,7 @@ def getTelnetData():
     except socket.error, v:
         errorcode=v[0]
         if errorcode==errno.ECONNREFUSED:
-            print("Connection refused")
+            writeErrorLog("socket.error: connection refused")
 
     return output
 
@@ -251,7 +235,10 @@ def getTelnetData():
 def main():
     collectedData = []
     #just comment out the second if, if there's no need to check ssid (e.g. wired connection)
-    if(checkInternetConnection() & ((extractSSID() == mySSID) or extractSSID() == "Not Linux or Windows")):
+    #if(checkInternetConnection() & ((extractSSID() == mySSID) or extractSSID() == "Not Linux or Windows")):
+    if(checkInternetConnection() & 
+      (((isWirelessConnection) & (extractSSID() == mySSID or extractSSID() == "Not Linux or Windows")) or 
+      not isWirelessConnection)):
         output = getTelnetData()
 
         date = ""
@@ -276,12 +263,12 @@ def main():
                 collectedData.append([eventDatetime, uptime, reconnectionDatetime])
                 insertDataToDBandCreateChart(collectedData)
     else:
-        print("Not connected to your home network or no network connection available")
+        writeErrorLog("Not connected to your home network or no network connection available")
 
 
 #global variables
 settingsFilename = "settings.conf"
-logging.basicConfig(format='%(levelname)s:%(message)s',filename='errors.log',level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s',filename='output.log',level=logging.ERROR)
 
 config = readConfig()
 if config != None:
@@ -290,7 +277,7 @@ if config != None:
         port = config['port']
         username = config['username']
         password = config['password']
-        isWirelessConnection = config['wirelessconnection']
+        isWirelessConnection = config['iswirelessconnection']
         if (isWirelessConnection == '1'):
             isWirelessConnection = True
             #used to check if I'm connected to my home network
@@ -303,8 +290,14 @@ if config != None:
             onlinePlot = True
         else:
             onlinePlot = False
+        
+        plotlyUsername = config['plotlyusername']
+        plotlyAPIkey = config['plotlyapikey']
+        DBFilename = config['dbfilename']
     except KeyError as e:
         writeErrorLog('Missing config line')
+else:
+    writeErrorLog("Invalid settings.conf file or exception caught")
 
 #use of functions
 main()
