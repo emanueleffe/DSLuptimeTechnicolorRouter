@@ -1,15 +1,21 @@
 # DSLuptimeTechnicolor
 Small script to check DSL uptime on a Technicolor router, insert it to a small database and export a chart. Developed using a Technicolor TG789vac v2_MOS, it might work with other Technicolor or Thomson routers.  
-I developed this small script to see how stable is my VDSL2 connection.
+I developed this small script to see how stable is my VDSL2 connection and practice with Python2.
 
 Acquired data:  
 ```Date, Duration (minutes)```
 
-It requires a small configuration editing the settings.conf file.
+Requirements:
+* Python 2
+* Plotly library (install with ```pip install plotly --user```)
 
-Example of scheduled job with ```cron```  to execute this script every 30 minutes (GNU/Linux):  
-```*/30 * * * * cd /path/to/script && python getUptime.py >> output.log```  
+It requires also a small configuration in the settings.conf file.
+
+Example of scheduled job with ```cron```  to execute this script every 30 minutes (GNU/Linux)
+```*/30 * * * * cd /path/to/script && python2 getUptime.py >> output.log```  
 [learn more about cron](https://linuxconfig.org/linux-cron-guide)
+
+On Windows you can just use Task Scheduler.
 
 This script uses [Plotly](https://plot.ly/) to generate a nice chart.
 
