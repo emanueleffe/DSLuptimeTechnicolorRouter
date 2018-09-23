@@ -11,8 +11,8 @@ import plotly
 import platform
 import ConfigParser
 import os
-import platform
 import logging
+import sys
 
 def readConfig():
     if os.path.isfile(settingsFilename):
@@ -231,14 +231,12 @@ def getTelnetData():
         errorcode=v[0]
         if errorcode==errno.ECONNREFUSED:
             writeErrorLog("socket.error: connection refused")
-
     return output
 
 #main function
-def main():
+def start():
     collectedData = []
-    #just comment out the second if, if there's no need to check ssid (e.g. wired connection)
-    #if(checkInternetConnection() & ((extractSSID() == mySSID) or extractSSID() == "Not Linux or Windows")):
+    
     if(checkInternetConnection() & 
       (((isWirelessConnection) & (extractSSID() == mySSID or extractSSID() == "Not Linux or Windows")) or 
       not isWirelessConnection)):
@@ -270,10 +268,11 @@ def main():
 
 
 #global variables
+os.chdir(sys.path[0])
 settingsFilename = "settings.conf"
 logging.basicConfig(format='%(levelname)s:%(message)s',filename='output.log',level=logging.ERROR)
-
 config = readConfig()
+
 if config != None:
     try:
         ip = config['ip']
@@ -291,16 +290,16 @@ if config != None:
         onlinePlot = config['onlineplot']
         if(onlinePlot == '1'):
             onlinePlot = True
+            plotlyUsername = config['plotlyusername']
+            plotlyAPIkey = config['plotlyapikey']
         else:
             onlinePlot = False
-        
-        plotlyUsername = config['plotlyusername']
-        plotlyAPIkey = config['plotlyapikey']
         DBFilename = config['dbfilename']
     except KeyError as e:
         writeErrorLog('Missing config line')
+    
+    #if config file is ok start the script
+    start()
+
 else:
     writeErrorLog("Invalid settings.conf file or exception caught")
-
-#use of functions
-main()
