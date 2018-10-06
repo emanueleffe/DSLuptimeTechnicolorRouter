@@ -182,26 +182,9 @@ def insertDataToDBandCreateChart(collectedData):
                 periodList.pop(0)
                 #delete from list the first element because it from the dummy date to the first one, useless
                 datetimeList.pop(0)
-                #create data
-                data = [plotly.graph_objs.Bar(x=datetimeList, y=periodList,name='Minutes')]
-                #create layout with legend activated
-                layout = plotly.graph_objs.Layout(showlegend=True)
-                #create figure
-                fig = plotly.graph_objs.Figure(data=data, layout=layout)
 
-                if(onlinePlot == True):
-                    '''
-                    online plot: in order to use it you must signup on plot.ly website and configure it
-                    by using the following commands in python cli:
-                    >>> import plotly
-                    >>> plotly.tools.set_credentials_file(username='DemoAccount', api_key='lr1c37zw81')
-                    more info here: https://plot.ly/python/getting-started/#initialization-for-online-plotting
-                    '''
-                    plotly.tools.set_credentials_file(username=plotlyUsername, api_key=plotlyAPIkey)
-                    plotly.plotly.plot(fig, filename="DSL uptime chart", auto_open=False)
-                else:
-                    #offline plot
-                    plotly.offline.plot(fig, filename="DSL uptime chart.html", auto_open=False)
+                #plot data
+                plotData(datetimeList, periodList)
             else:
                 writeErrorLog("Nothing to plot")
 
@@ -210,6 +193,28 @@ def insertDataToDBandCreateChart(collectedData):
     finally:
         if con:
             con.close()
+
+def plotData(datetimeList, periodList):
+    #create data
+    data = [plotly.graph_objs.Bar(x=datetimeList, y=periodList,name='Minutes')]
+    #create layout with legend activated
+    layout = plotly.graph_objs.Layout(showlegend=True)
+    #create figure
+    fig = plotly.graph_objs.Figure(data=data, layout=layout)
+
+    if(onlinePlot == True):
+        '''
+        online plot: in order to use it you must signup on plot.ly website and configure it
+        by using the following commands in python cli:
+        >>> import plotly
+        >>> plotly.tools.set_credentials_file(username='DemoAccount', api_key='lr1c37zw81')
+        more info here: https://plot.ly/python/getting-started/#initialization-for-online-plotting
+        '''
+        plotly.tools.set_credentials_file(username=plotlyUsername, api_key=plotlyAPIkey)
+        plotly.plotly.plot(fig, filename="DSL uptime chart", auto_open=False)
+    else:
+        #offline plot
+        plotly.offline.plot(fig, filename="DSL uptime chart.html", auto_open=False)
 
 def getTelnetData():
     try:
@@ -299,7 +304,13 @@ if config != None:
         writeErrorLog('Missing config line')
     
     #if config file is ok start the script
-    start()
+    try:
+        start()
+    except plotly.exceptions.PlotlyRequestError as e:
+        writeErrorLog("Plotly error: %s" %e.message
+    except Exception:
+        writeErrorLog("Exception caught. Something went wrong.")
 
 else:
     writeErrorLog("Invalid settings.conf file or exception caught")
+
